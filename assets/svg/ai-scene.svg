@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 580" role="img" aria-labelledby="t"><title id="t">A prompt window on the left turns into a made-up creature picture on the right, with a small friendly bot, stars and a cursor</title>
+
+  <!-- prompt window -->
+  <g transform="translate(26 58) rotate(-3 190 125)">
+    <rect x="10" y="10" width="384" height="252" rx="12" fill="#15131F"/>
+    <rect width="384" height="252" rx="12" fill="#FFFBF2" stroke="#15131F" stroke-width="4"/>
+    <path d="M0 42V12A12 12 0 0 1 12 0H372a12 12 0 0 1 12 12V42Z" fill="#FFD83D" stroke="#15131F" stroke-width="4" stroke-linejoin="round"/>
+    <circle cx="26" cy="21" r="7.5" fill="#FF8A7A" stroke="#15131F" stroke-width="3"/>
+    <circle cx="50" cy="21" r="7.5" fill="#FFFFFF" stroke="#15131F" stroke-width="3"/>
+    <circle cx="74" cy="21" r="7.5" fill="#7EE0C3" stroke="#15131F" stroke-width="3"/>
+    <path d="M30 84H258M30 108H336M30 132H206" fill="none" stroke="#15131F" stroke-width="7" stroke-linecap="round" opacity=".85"/>
+    <path d="M30 108H336" fill="none" stroke="#FFFBF2" stroke-width="0"/>
+    <rect x="28" y="172" width="260" height="52" rx="26" fill="#FFFFFF" stroke="#15131F" stroke-width="3.5"/>
+    <path d="M54 186V210" stroke="#2B3FE0" stroke-width="4.5" stroke-linecap="round"/>
+    <path d="M74 198H196" stroke="#15131F" stroke-width="5" stroke-linecap="round" opacity=".4"/>
+    <circle cx="328" cy="198" r="28" fill="#FF6A1F" stroke="#15131F" stroke-width="4"/>
+    <path d="M316 198H340M330 187 341 198 330 209" fill="none" stroke="#FFFBF2" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path transform="translate(334 206) scale(1.15)" d="M6 4V38L15 30 21 44 28 41 22 28H34Z" fill="#FFFFFF" stroke="#15131F" stroke-width="3" stroke-linejoin="round"/>
+  </g>
+
+  <!-- result window -->
+  <g transform="translate(326 298) scale(.9) rotate(4 150 140)">
+    <rect x="10" y="10" width="316" height="296" rx="12" fill="#15131F"/>
+    <rect width="316" height="296" rx="12" fill="#7EE0C3" stroke="#15131F" stroke-width="4"/>
+    <path d="M0 40V12A12 12 0 0 1 12 0H304a12 12 0 0 1 12 12V40Z" fill="#FFFBF2" stroke="#15131F" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M24 20H92" stroke="#15131F" stroke-width="5" stroke-linecap="round" opacity=".5"/>
+    <path d="M276 12 281 22 292 23 284 30 286 40 276 35 266 40 268 30 260 23 271 22Z" fill="#FF6A1F" stroke="#15131F" stroke-width="2.5" stroke-linejoin="round" transform="translate(0 -4) scale(1)"/>
+    <rect x="22" y="56" width="272" height="176" fill="#FFFBF2" stroke="#15131F" stroke-width="3.5"/>
+    <!-- imaginary creature -->
+    <g stroke="#15131F" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+      <path d="M212 176C246 164 252 200 226 202" fill="none"/>
+      <path d="M118 124 108 84 142 108Z" fill="#FF8A7A"/>
+      <path d="M198 124 208 84 174 108Z" fill="#FF8A7A"/>
+      <ellipse cx="158" cy="156" rx="58" ry="50" fill="#FF8A7A"/>
+      <path d="M124 100V88M158 94V80M192 100V88" fill="none" stroke="#2B3FE0" stroke-width="3"/>
+      <ellipse cx="136" cy="212" rx="14" ry="8" fill="#FF6A1F"/>
+      <ellipse cx="182" cy="212" rx="14" ry="8" fill="#FF6A1F"/>
+      <circle cx="139" cy="148" r="12" fill="#FFFFFF"/><circle cx="177" cy="148" r="12" fill="#FFFFFF"/>
+      <circle cx="142" cy="150" r="5.5" fill="#15131F" stroke="none"/><circle cx="180" cy="150" r="5.5" fill="#15131F" stroke="none"/>
+      <path d="M152 164h12l-6 8Z" fill="#2B3FE0" stroke-width="3"/>
+      <path d="M148 178q10 9 20 0" fill="none"/>
+      <circle cx="122" cy="176" r="6" fill="#FFD83D" stroke-width="3"/><circle cx="196" cy="172" r="5" fill="#FFD83D" stroke-width="3"/>
+    </g>
+    <path d="M250 76C251 86 255 90 264 91 255 92 251 96 250 106 249 96 245 92 236 91 245 90 249 86 250 76Z" fill="#2B3FE0"/>
+    <path d="M52 76C53 84 56 87 64 88 56 89 53 92 52 100 51 92 48 89 40 88 48 87 51 84 52 76Z" fill="#FF6A1F"/>
+    <path d="M24 254H156" stroke="#15131F" stroke-width="8" stroke-linecap="round"/>
+    <path d="M24 274H252" stroke="#15131F" stroke-width="5" stroke-linecap="round" opacity=".45"/>
+  </g>
+
+  <!-- tiny bot + speech -->
+  <g transform="translate(12 372) scale(2.25)">
+    <path d="M32 10V2" stroke="#15131F" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="32" cy="5" r="4.5" fill="#FF6A1F" stroke="#15131F" stroke-width="3"/>
+    <rect x="8" y="12" width="48" height="40" rx="12" fill="#7EE0C3" stroke="#15131F" stroke-width="4"/>
+    <circle cx="23" cy="30" r="6" fill="#FFFFFF" stroke="#15131F" stroke-width="3"/><circle cx="41" cy="30" r="6" fill="#FFFFFF" stroke="#15131F" stroke-width="3"/>
+    <circle cx="24.5" cy="31" r="2.6" fill="#15131F"/><circle cx="42.5" cy="31" r="2.6" fill="#15131F"/>
+    <path d="M24 42Q32 48 40 42" fill="none" stroke="#15131F" stroke-width="3.2" stroke-linecap="round"/>
+    <rect x="18" y="54" width="28" height="14" rx="5" fill="#FFD83D" stroke="#15131F" stroke-width="3.5"/>
+  </g>
+  <g transform="translate(120 352) scale(.95)">
+    <path d="M10 6H90a6 6 0 0 1 6 6V44a6 6 0 0 1-6 6H46L30 66V50H10a6 6 0 0 1-6-6V12A6 6 0 0 1 10 6Z" fill="#FFFFFF" stroke="#15131F" stroke-width="3.5" stroke-linejoin="round"/>
+    <path d="M22 22H74M22 36H56" stroke="#15131F" stroke-width="4.5" stroke-linecap="round" fill="none" opacity=".7"/>
+  </g>
+
+  <!-- curl arrow from prompt to result -->
+  <g fill="none" stroke="#FFFBF2" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M196 338C214 402 262 430 304 408"/>
+    <path d="M286 394 306 407 292 424"/>
+  </g>
+
+  <!-- abstract shapes + stars -->
+  <path d="M560 54 604 110 520 110Z" fill="#FFD83D" stroke="#15131F" stroke-width="4" stroke-linejoin="round" transform="rotate(12 560 84)"/>
+  <circle cx="580" cy="176" r="22" fill="none" stroke="#7EE0C3" stroke-width="9"/>
+  <path d="M470 38q14-22 28 0t28 0" fill="none" stroke="#FF8A7A" stroke-width="7" stroke-linecap="round"/>
+  <path d="M446 36C448 54 456 62 474 64 456 66 448 74 446 92 444 74 436 66 418 64 436 62 444 54 446 36Z" fill="#FFFBF2" transform="translate(-20 -10) scale(.8)"/>
+  <path d="M34 36C35 46 40 51 50 52 40 53 35 58 34 68 33 58 28 53 18 52 28 51 33 46 34 36Z" fill="#FFD83D"/>
+  <path d="M606 470C607 482 612 487 624 488 612 489 607 494 606 506 605 494 600 489 588 488 600 487 605 482 606 470Z" fill="#FFFBF2"/>
+  <path d="M590 340 600 360 622 363 606 378 610 400 590 389 570 400 574 378 558 363 580 360Z" fill="#FF8A7A" stroke="#15131F" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M232 528q10-12 20 0t20 0t20 0" fill="none" stroke="#FFD83D" stroke-width="6" stroke-linecap="round"/>
+</svg>

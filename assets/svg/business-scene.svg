@@ -1,0 +1,118 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 580" role="img" aria-labelledby="t"><title id="t">A collage of making a business: a product sketch, a lightbulb, a packaging box, a price tag, a business card, a small bar chart and a tiny shop</title>
+  <defs>
+    <pattern id="dots" width="18" height="18" patternUnits="userSpaceOnUse"><circle cx="9" cy="9" r="1.2" fill="#15131F" opacity=".22"/></pattern>
+  </defs>
+
+  <!-- sketchbook page -->
+  <g transform="translate(66 64) rotate(-4 170 195)">
+    <rect x="10" y="10" width="340" height="392" rx="6" fill="#15131F"/>
+    <rect width="340" height="392" rx="6" fill="#FFFBF2" stroke="#15131F" stroke-width="4"/>
+    <rect width="340" height="392" rx="6" fill="url(#dots)"/>
+    <rect x="118" y="-14" width="104" height="30" fill="#FF8A7A" stroke="#15131F" stroke-width="3" transform="rotate(3 170 0)"/>
+    <path d="M30 52H156" stroke="#15131F" stroke-width="6" stroke-linecap="round"/>
+    <path d="M30 74H112" stroke="#15131F" stroke-width="4" stroke-linecap="round" opacity=".3"/>
+    <!-- bottle -->
+    <rect x="150" y="110" width="40" height="26" rx="5" fill="#FF6A1F" stroke="#15131F" stroke-width="3.5"/>
+    <path d="M146 152C146 142 154 138 156 136H184C186 138 194 142 194 152V292C194 304 186 310 176 310H164C154 310 146 304 146 292Z" fill="#D8F5EC" stroke="#15131F" stroke-width="3.5" stroke-linejoin="round"/>
+    <path d="M147 252q11-8 23 0t24 0" fill="none" stroke="#2B3FE0" stroke-width="3.5" stroke-linecap="round"/>
+    <path d="M170 186 175 198 188 199 178 207 181 220 170 213 159 220 162 207 152 199 165 198Z" fill="#FFD83D" stroke="#15131F" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M132 100C148 86 206 88 210 118 212 142 160 148 140 134 126 124 128 106 158 96" fill="none" stroke="#FF6A1F" stroke-width="3.5" stroke-linecap="round"/>
+    <!-- dimension line -->
+    <path d="M116 112V310M108 112h16M108 310h16" fill="none" stroke="#15131F" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M92 206q7-7 14 0t14 0" fill="none" stroke="#15131F" stroke-width="2.5" stroke-linecap="round" opacity=".6"/>
+    <!-- checklist -->
+    <g fill="none" stroke="#15131F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="226" y="150" width="16" height="16" rx="2"/><path d="M230 158l4 4 7-10" stroke="#FF6A1F" stroke-width="4"/><path d="M252 158h58" opacity=".5"/>
+      <rect x="226" y="186" width="16" height="16" rx="2"/><path d="M230 194l4 4 7-10" stroke="#FF6A1F" stroke-width="4"/><path d="M252 194h44" opacity=".5"/>
+      <rect x="226" y="222" width="16" height="16" rx="2"/><path d="M252 230h52" opacity=".5"/>
+      <path d="M30 346H196M30 366H140" opacity=".3" stroke-width="4"/>
+    </g>
+  </g>
+
+  <!-- lightbulb -->
+  <g transform="translate(6 -4) scale(1.35)">
+    <path d="M6 12 12 17M58 12 52 17M2 33 9 34M62 33 55 34" fill="none" stroke="#FF6A1F" stroke-width="3.5" stroke-linecap="round"/>
+    <path d="M32 8C14 8 6 22 8 35 10 46 18 50 20 60H44C46 50 54 46 56 35 58 22 50 8 32 8Z" fill="#FFFBF2" stroke="#15131F" stroke-width="3.5" stroke-linejoin="round"/>
+    <path d="M24 44 28 33 32 41 36 33 40 44" fill="none" stroke="#15131F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="20" y="60" width="24" height="8" rx="2" fill="#FFD83D" stroke="#15131F" stroke-width="3.5"/>
+    <rect x="24" y="68" width="16" height="8" rx="3" fill="#2B3FE0" stroke="#15131F" stroke-width="3.5"/>
+  </g>
+
+  <!-- sticky note -->
+  <g transform="translate(388 22) rotate(7)">
+    <rect x="8" y="8" width="120" height="120" fill="#15131F"/>
+    <rect width="120" height="120" fill="#FF8A7A" stroke="#15131F" stroke-width="4"/>
+    <path d="M18 40H94M18 62H78M18 84H102" stroke="#15131F" stroke-width="4.5" stroke-linecap="round" fill="none"/>
+    <path d="M92 100 96 108 105 109 98 115 100 123 92 118 84 123 86 115 79 109 88 108Z" fill="#FFD83D" stroke="#15131F" stroke-width="2.5" stroke-linejoin="round"/>
+  </g>
+
+  <!-- hanging price tag -->
+  <g transform="translate(536 128) rotate(14)">
+    <path d="M24 30C14 18 10 6 12 -6" fill="none" stroke="#15131F" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M10 32 30 8H82a5 5 0 0 1 5 5V51a5 5 0 0 1-5 5H30Z" fill="#FFFBF2" stroke="#15131F" stroke-width="3.5" stroke-linejoin="round"/>
+    <circle cx="27" cy="32" r="4.5" fill="#FFD83D" stroke="#15131F" stroke-width="3"/>
+    <path d="M62 22C50 18 46 28 58 32 70 36 64 46 52 42M57 15V20M57 44V49" fill="none" stroke="#15131F" stroke-width="3.5" stroke-linecap="round"/>
+  </g>
+
+  <!-- business card -->
+  <g transform="translate(446 168) rotate(7)">
+    <rect x="8" y="8" width="150" height="90" fill="#15131F"/>
+    <rect width="150" height="90" fill="#FFFBF2" stroke="#15131F" stroke-width="4"/>
+    <path d="M16 72V44a15 15 0 0 1 30 0V72Z" fill="#2B3FE0" stroke="#15131F" stroke-width="3.5" stroke-linejoin="round"/>
+    <circle cx="26" cy="50" r="4.5" fill="#fff" stroke="#15131F" stroke-width="2"/><circle cx="38" cy="49" r="4" fill="#fff" stroke="#15131F" stroke-width="2"/>
+    <circle cx="27" cy="51" r="2" fill="#15131F"/><circle cx="39" cy="50" r="1.8" fill="#15131F"/>
+    <path d="M62 34H134M62 52H116M62 68H98" stroke="#15131F" stroke-width="4" stroke-linecap="round" opacity=".75" fill="none"/>
+  </g>
+
+  <!-- storefront -->
+  <g transform="translate(396 312) scale(1.78)">
+    <rect x="14" y="40" width="92" height="64" fill="#FFFBF2" stroke="#15131F" stroke-width="4" stroke-linejoin="round"/>
+    <rect x="12" y="10" width="96" height="12" rx="3" fill="#2B3FE0" stroke="#15131F" stroke-width="4"/>
+    <g stroke="#15131F" stroke-width="4" stroke-linejoin="round">
+      <path d="M15 22h15v16a7.5 7.5 0 0 1-15 0Z" fill="#FF6A1F"/><path d="M30 22h15v16a7.5 7.5 0 0 1-15 0Z" fill="#FFFBF2"/>
+      <path d="M45 22h15v16a7.5 7.5 0 0 1-15 0Z" fill="#FF6A1F"/><path d="M60 22h15v16a7.5 7.5 0 0 1-15 0Z" fill="#FFFBF2"/>
+      <path d="M75 22h15v16a7.5 7.5 0 0 1-15 0Z" fill="#FF6A1F"/><path d="M90 22h15v16a7.5 7.5 0 0 1-15 0Z" fill="#FFFBF2"/>
+    </g>
+    <rect x="24" y="62" width="24" height="42" fill="#2B3FE0" stroke="#15131F" stroke-width="4"/><circle cx="43" cy="84" r="2.5" fill="#FFD83D"/>
+    <rect x="58" y="58" width="38" height="28" fill="#FFD83D" stroke="#15131F" stroke-width="4"/>
+    <path d="M64 80 70 70 76 78 80 72 90 80" fill="none" stroke="#15131F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M6 104h108" stroke="#15131F" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <path d="M580 300 590 322 612 325 596 340 600 362 580 352 560 362 564 340 548 325 570 322Z" transform="translate(0 -20) scale(.8) translate(150 70)" fill="#FFD83D" stroke="#15131F" stroke-width="4" stroke-linejoin="round"/>
+
+  <!-- packaging box -->
+  <g transform="translate(222 410)" stroke="#15131F" stroke-width="4" stroke-linejoin="round">
+    <path d="M0 34 74 4 148 34 74 66Z" fill="#FF6A1F"/>
+    <path d="M0 34 74 66V138L0 106Z" fill="#2B3FE0"/>
+    <path d="M74 66 148 34V106L74 138Z" fill="#4A5DF5"/>
+    <path d="M37 19 111 50" stroke="#FFD83D" stroke-width="9" fill="none" stroke-linecap="butt"/>
+    <path d="M37 88 41 98 52 99 44 106 46 116 37 110 28 116 30 106 22 99 33 98Z" transform="translate(0 -4)" fill="#FFD83D" stroke-width="3"/>
+  </g>
+
+  <!-- bar chart card -->
+  <g transform="translate(18 436) rotate(-3)">
+    <rect x="8" y="8" width="176" height="112" fill="#15131F"/>
+    <rect width="176" height="112" fill="#FFFBF2" stroke="#15131F" stroke-width="4"/>
+    <g stroke="#15131F" stroke-width="3.5" stroke-linejoin="round">
+      <rect x="22" y="68" width="26" height="30" fill="#FFD83D"/><rect x="62" y="50" width="26" height="48" fill="#FF6A1F"/><rect x="102" y="30" width="26" height="68" fill="#2B3FE0"/>
+    </g>
+    <path d="M14 100H162" stroke="#15131F" stroke-width="3.5" stroke-linecap="round"/>
+    <path d="M26 44C60 40 100 22 146 12M132 8l16 3-9 15" fill="none" stroke="#FF6A1F" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <!-- coins -->
+  <g stroke="#15131F" stroke-width="3.5">
+    <circle cx="206" cy="540" r="24" fill="#FFD83D"/><circle cx="206" cy="540" r="15" fill="none" stroke-width="2.5" stroke-dasharray="3 4"/>
+    <circle cx="166" cy="552" r="20" fill="#FFD83D"/><circle cx="166" cy="552" r="12" fill="none" stroke-width="2.5" stroke-dasharray="3 4"/>
+  </g>
+
+  <!-- dotted paths -->
+  <g fill="none" stroke="#FF6A1F" stroke-width="5" stroke-linecap="round" stroke-dasharray="1 12">
+    <path d="M270 360C320 392 262 392 296 412"/>
+    <path d="M372 470C392 462 398 440 410 424"/>
+  </g>
+
+  <!-- sparkles -->
+  <path d="M596 44C597 56 602 61 614 62 602 63 597 68 596 80 595 68 590 63 578 62 590 61 595 56 596 44Z" fill="#2B3FE0"/>
+  <path d="M40 290C41 298 44 301 52 302 44 303 41 306 40 314 39 306 36 303 28 302 36 301 39 298 40 290Z" fill="#15131F"/>
+</svg>
