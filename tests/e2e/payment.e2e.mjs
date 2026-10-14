@@ -22,7 +22,7 @@ async function newPage({ width = 1280, height = 900, connected = true, permissio
   const page = await ctx.newPage();
   page.errors = [];
   page.on('pageerror', (e) => page.errors.push(e.message));
-  if (connected) await injectBackend(page, mock.url);
+  await injectBackend(page, connected ? mock.url : '');
   // Block any real external navigation (Revolut / WhatsApp) so tests never leave the site.
   await page.route(/^https?:\/\/(?!127\.0\.0\.1)/, (r) => r.abort());
   await page.goto(`${site.url}/index.html`);
@@ -290,7 +290,7 @@ await t('timeout is handled (hung backend)', async () => {
   reset();
   const page = await newPage();
   await page.route('**/js/config.js', async (route) => {
-    const src = fs.readFileSync(new URL('../../js/config.js', import.meta.url), 'utf8').replace(/url: '', \/\/ TODO\(confirm\): Apps Script web app URL/, `url: '${mock.url}',`).replace('timeoutMs: 15000', 'timeoutMs: 800');
+    const src = fs.readFileSync(new URL('../../js/config.js', import.meta.url), 'utf8').replace(/(export const BACKEND = \{\s*url: )'[^']*'/, `$1'${mock.url}'`).replace('timeoutMs: 15000', 'timeoutMs: 800');
     await route.fulfill({ status: 200, contentType: 'text/javascript', body: src });
   });
   await page.reload();

@@ -69,7 +69,7 @@ export async function loadPlaywright() {
 export async function injectBackend(page, backendUrl) {
   await page.route('**/js/config.js', async (route) => {
     const src = await fs.readFile(path.join(root, 'js/config.js'), 'utf8');
-    const patched = src.replace(/url: '', \/\/ TODO\(confirm\): Apps Script web app URL/, `url: '${backendUrl}',`);
+    const patched = src.replace(/(export const BACKEND = \{\s*url: )'[^']*'/, `$1'${backendUrl}'`);
     if (patched === src) throw new Error('config.js backend url line not found');
     await route.fulfill({ status: 200, contentType: 'text/javascript', body: patched });
   });
