@@ -1,10 +1,14 @@
 import {
   BRAND, EVENT, SESSION_TIMES, CURRENCIES, PRICE_IS_PER_CHILD, REGISTRATION,
-  CONTACT, POSTERS, DEV, RECORDING, FAQ, paymentUrlFor,
+  CONTACT, POSTERS, DEV, RECORDING, FAQ,
 } from './config.js';
 import {
-  unitPrice, separateTotal, weekendSaving, total, formatMoney, currencyForCountry, clampChildren,
+  unitPrice, separateTotal, weekendSaving, total, formatMoney, formatExact, clampChildren,
 } from './pricing.js';
+import {
+  newReference, callBackend, ApiError, pending, validateRegistration, STATUS,
+} from './registration.js';
+import { openPayment, openConfirm, initPaymentModal } from './payment-modal.js';
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -28,6 +32,7 @@ const TEXT = {
   'ai.dayMonth': EVENT.ai.dayMonth,
   'recording.text': RECORDING.text,
   'currency.usd.toggleLabel': CURRENCIES.usd.toggleLabel,
+  'currency.gbp.toggleLabel': CURRENCIES.gbp.toggleLabel,
   'currency.ngn.toggleLabel': CURRENCIES.ngn.toggleLabel,
 };
 
@@ -42,8 +47,10 @@ function bindSessions() {
   $$('[data-session]').forEach((el) => {
     const key = el.dataset.session;
     const time = SESSION_TIMES[key];
+    const [hh, mm] = time ? time.split(':').map(Number) : [0, 0];
+    const clock = `${((hh + 11) % 12) + 1}:${String(mm).padStart(2, '0')} ${hh >= 12 ? 'PM' : 'AM'}`;
     el.textContent = time
-      ? `Starts at ${time}${SESSION_TIMES.timeZoneNote ? `. ${SESSION_TIMES.timeZoneNote}` : ''}`
+      ? `Starts at ${clock}${SESSION_TIMES.timeZoneNote ? `, ${SESSION_TIMES.timeZoneNote}` : ''}`
       : SESSION_TIMES.unconfirmedText;
   });
 }
@@ -169,8 +176,8 @@ function initForm() {
   $$('input[name="option"]').forEach((r) => r.addEventListener('change', () => selectOption(r.value)));
   $$('input[name="currency"]').forEach((r) => r.addEventListener('change', () => setCurrency(r.value)));
   country.addEventListener('change', () => {
-    const cur = currencyForCountry(country.value);
-    if (cur && cur !== state.currency) setCurrency(cur);
+    const allowed = allowedCurrencies(country.value);
+    if (allowed.length && !allowed.includes(state.currency)) setCurrency(allowed[0]);
     if (state.submitted) validateField('country');
   });
   kids.addEventListener('change', renderSummary);
@@ -180,12 +187,19 @@ function initForm() {
 
 
   $('#register-form').addEventListener('submit', onSubmit);
+  $('#already-paid').addEventListener('click', (e) => openConfirm(pending.load(), e.currentTarget));
   $('#register-form').addEventListener('input', onLiveValidate);
   $('#register-form').addEventListener('change', onLiveValidate);
 }
 
 /* ---------- validation ---------- */
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+function allowedCurrencies(countryValue) {
+  return REGISTRATION.countries.find((c) => c.value === countryValue)?.currencies || [];
+}
+
+const PHONE_RE = /^[+0-9()\-\s.]{6,25}$/;
 
 const validators = {
   name(form) {
@@ -203,11 +217,16 @@ const validators = {
   country(form) {
     const v = form.elements.country.value;
     if (!v) return 'Please choose your country.';
-    const cur = currencyForCountry(v);
-    if (cur && cur !== state.currency) {
-      return `Your country uses the ${CURRENCIES[cur].label} price list. Please switch the price list above.`;
+    const allowed = allowedCurrencies(v);
+    if (allowed.length && !allowed.includes(state.currency)) {
+      const names = allowed.map((c) => CURRENCIES[c].label).join(' or ');
+      return `For your country, please use the ${names} price list above.`;
     }
     return '';
+  },
+  phone(form) {
+    const v = form.elements.phone.value.trim();
+    return !v || PHONE_RE.test(v) ? '' : 'That number does not look right. Use digits, and a + for the country code.';
   },
   children(form) {
     const n = Number(form.elements.children.value);
@@ -222,7 +241,7 @@ const validators = {
 };
 
 const fieldControl = {
-  name: '#f-name', email: '#f-email', country: '#f-country', children: '#f-children',
+  name: '#f-name', email: '#f-email', phone: '#f-phone', country: '#f-country', children: '#f-children',
   bands: 'input[name="band"]', guardian: '#f-guardian',
 };
 
@@ -266,6 +285,67 @@ function clearStatus() {
   box.textContent = '';
 }
 
+const SUBMIT_LABEL = 'Register and view payment details';
+
+/** Same details -> same reference, so a retry after a network error can never create a second registration. */
+let attempt = null;
+
+function buildPayload(form) {
+  const body = {
+    action: 'register',
+    parentName: form.elements.name.value.trim(),
+    email: form.elements.email.value.trim(),
+    phone: form.elements.phone.value.trim(),
+    country: form.elements.country.value,
+    option: state.option,
+    currency: state.currency,
+    children: childrenCount(),
+    ageBands: $$('input[name="band"]:checked', form).map((el) => el.value),
+    guardianConfirmed: true,
+    website: form.elements.website.value,
+  };
+  const signature = JSON.stringify({ ...body, website: '' });
+  if (!attempt || attempt.signature !== signature) attempt = { signature, reference: newReference() };
+  body.reference = attempt.reference;
+  return body;
+}
+
+function mailtoFallback(body) {
+  const subject = `FutureMakers registration (${body.option}, ${body.currency.toUpperCase()})`;
+  const text = [
+    'My online registration did not go through. Please register me:', '',
+    `Name: ${body.parentName}`, `Email: ${body.email}`, `Contact number: ${body.phone || '-'}`,
+    `Country: ${body.country}`, `Package: ${body.option}`, `Currency: ${body.currency.toUpperCase()}`, `Children: ${body.children}`,
+  ].join('\n');
+  return `mailto:${CONTACT.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
+}
+
+function setFailure(err, body) {
+  const box = $('#form-status');
+  const code = err instanceof ApiError ? err.code : 'unknown';
+  let title = 'We could not save your registration.';
+  let detail = 'Nothing has been saved and nothing has been charged. Your answers are still here: please try again in a moment.';
+  if (code === 'not_connected') {
+    title = 'Online registration is not switched on yet.';
+    detail = 'Your details have not been saved and nothing has been charged. Please email us and we will register you by hand.';
+  } else if (code === 'network') {
+    detail = 'We could not reach the registration service (check your internet connection). Nothing has been saved or charged. Press the button again to retry.';
+  } else if (code === 'rate_limited') {
+    detail = err.message;
+  } else if (['invalid_package', 'invalid_children', 'invalid_age_bands', 'invalid_country', 'invalid_email', 'invalid_phone', 'invalid_name'].includes(code)) {
+    detail = `${err.message} Please check the form and try again.`;
+  }
+  setStatus('error', title, detail);
+  const p = document.createElement('p');
+  p.className = 'status-extra';
+  const a = document.createElement('a');
+  a.href = mailtoFallback(body);
+  a.textContent = `Email your details to ${CONTACT.email} instead`;
+  p.append(a);
+  box.append(p);
+  box.focus();
+}
+
 async function onSubmit(e) {
   e.preventDefault();
   state.submitted = true;
@@ -279,49 +359,85 @@ async function onSubmit(e) {
     return;
   }
 
-  const cur = state.currency;
-  const url = paymentUrlFor(cur, state.option);
-  if (!url) {
-    setStatus(
-      'warn',
-      'Online payment is not switched on yet.',
-      'Your details have not been sent or saved, and you have not been charged. Please check back soon.',
-    );
-    return;
-  }
-
   const button = $('#submit-btn');
   button.disabled = true;
-  button.textContent = 'One moment…';
+  button.textContent = 'Saving your registration…';
+  const body = buildPayload(form);
   try {
-    if (REGISTRATION.formEndpoint) {
-      const payload = {
-        parentName: form.elements.name.value.trim(),
-        parentEmail: form.elements.email.value.trim(),
-        country: form.elements.country.value,
-        children: childrenCount(),
-        ageBands: $$('input[name="band"]:checked', form).map((el) => el.value),
-        ticket: state.option,
-        currency: cur.toUpperCase(),
-        total: total(cur, state.option, childrenCount()),
-        guardianConfirmed: true,
-        submittedAt: new Date().toISOString(),
-      };
-      const res = await fetch(REGISTRATION.formEndpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) throw new Error(`Registration service replied ${res.status}`);
+    let res;
+    try {
+      res = await callBackend(body);
+    } catch (err) {
+      if (err instanceof ApiError && err.code === 'reference_conflict') {
+        attempt = { signature: attempt.signature, reference: newReference() };
+        body.reference = attempt.reference;
+        res = await callBackend(body);
+      } else throw err;
     }
-    setStatus('info', 'Taking you to secure checkout…');
-    window.location.assign(url);
+    const reg = {
+      reference: res.reference, option: body.option, currency: body.currency, children: body.children,
+      amountOwed: res.amountOwed, email: body.email, parentName: body.parentName, status: res.status || STATUS.pending,
+    };
+    const problem = validateRegistration(reg);
+    if (problem || res.currency !== body.currency) {
+      // The server's answer disagrees with this page's price list: show nothing rather than something wrong.
+      console.error('Registration response rejected:', problem, res);
+      setStatus('error', 'Your registration was saved, but we could not show the payment details.', `Please email ${CONTACT.email} and quote reference ${res.reference || '(none shown)'}.`);
+      return;
+    }
+    pending.save(reg);
+    renderResume();
+    openPayment(reg, button);
   } catch (err) {
     console.error(err);
+    setFailure(err, body);
+  } finally {
     button.disabled = false;
-    button.textContent = 'Continue to payment';
-    setStatus('error', 'Something went wrong.', 'We could not save your registration. Nothing has been charged. Please try again in a moment.');
+    button.textContent = SUBMIT_LABEL;
   }
+}
+
+/* ---------- saved registration banner ---------- */
+function renderResume() {
+  const reg = pending.load();
+  const banner = $('#resume-banner');
+  banner.hidden = !reg;
+  if (!reg) return;
+  $('#resume-ref').textContent = reg.reference;
+  $('#resume-amount').textContent = formatExact(reg.currency, reg.amountOwed);
+  $('#resume-status').textContent = reg.status === STATUS.paid ? 'Paid' : reg.status === STATUS.submitted ? 'Payment submitted, awaiting verification' : 'Payment pending';
+}
+
+async function refreshResume() {
+  const reg = pending.load();
+  if (!reg) return;
+  try {
+    const res = await callBackend({ action: 'status', reference: reg.reference, email: reg.email });
+    if (res.status && res.status !== reg.status) {
+      pending.save({ ...reg, status: res.status });
+      renderResume();
+    }
+  } catch { /* offline or not connected: keep what we have */ }
+}
+
+function initResume() {
+  $('#resume-view').addEventListener('click', (e) => { const r = pending.load(); if (r) openPayment(r, e.currentTarget); });
+  $('#resume-confirm').addEventListener('click', (e) => openConfirm(pending.load(), e.currentTarget));
+  $('#resume-new').addEventListener('click', () => {
+    pending.clear();
+    renderResume();
+    $('#f-name').focus();
+  });
+  initPaymentModal({
+    onClose(reg) {
+      renderResume();
+      if (reg?.reference) {
+        setStatus('info', `Your registration reference is ${reg.reference}.`, 'Keep it safe. You can reopen your payment details from the box above the form.');
+      }
+    },
+  });
+  renderResume();
+  refreshResume();
 }
 
 /* ---------- FAQ ---------- */
@@ -432,6 +548,7 @@ bindFixedPrices();
 bindPosters();
 initNav();
 initForm();
+initResume();
 renderOptions();
 renderPrices();
 renderFaq();

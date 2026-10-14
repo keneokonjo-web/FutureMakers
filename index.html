@@ -179,7 +179,7 @@
       </div>
 
       <div class="buy">
-        <p class="buy-price"><strong data-price-fixed="usd:business">$40</strong> <span class="buy-or">or</span> <strong data-price-fixed="ngn:business">₦60,000</strong><small>per workshop · Nigerian price list in naira</small></p>
+        <p class="buy-price"><strong data-price-fixed="usd:business">$40</strong> <span class="buy-or">·</span> <strong data-price-fixed="gbp:business">£30</strong> <span class="buy-or">·</span> <strong data-price-fixed="ngn:business">₦60,000</strong><small>per workshop · USD, GBP or Nigerian naira</small></p>
         <p class="buy-time" data-session="business"></p>
         <a class="btn btn-ink btn-lg" href="#pricing" data-choose="business">Join the Business Workshop</a>
       </div>
@@ -215,7 +215,7 @@
       </div>
 
       <div class="buy">
-        <p class="buy-price"><strong data-price-fixed="usd:ai">$40</strong> <span class="buy-or">or</span> <strong data-price-fixed="ngn:ai">₦60,000</strong><small>per workshop · Nigerian price list in naira</small></p>
+        <p class="buy-price"><strong data-price-fixed="usd:ai">$40</strong> <span class="buy-or">·</span> <strong data-price-fixed="gbp:ai">£30</strong> <span class="buy-or">·</span> <strong data-price-fixed="ngn:ai">₦60,000</strong><small>per workshop · USD, GBP or Nigerian naira</small></p>
         <p class="buy-time" data-session="ai"></p>
         <a class="btn btn-lemon btn-lg" href="#pricing" data-choose="ai">Join the AI Workshop</a>
       </div>
@@ -391,10 +391,21 @@
 
     <fieldset class="currency" aria-describedby="currency-note">
       <legend>Price list</legend>
-      <label><input type="radio" name="currency" value="usd" checked><span data-text="currency.usd.toggleLabel">International ($)</span></label>
+      <label><input type="radio" name="currency" value="usd" checked><span data-text="currency.usd.toggleLabel">US ($)</span></label>
+      <label><input type="radio" name="currency" value="gbp"><span data-text="currency.gbp.toggleLabel">UK (£)</span></label>
       <label><input type="radio" name="currency" value="ngn"><span data-text="currency.ngn.toggleLabel">Nigeria (₦)</span></label>
     </fieldset>
     <p class="currency-note" id="currency-note" aria-live="polite"></p>
+
+    <section class="resume" id="resume-banner" aria-labelledby="resume-title" hidden>
+      <h3 id="resume-title" class="h4">Your registration is waiting for payment</h3>
+      <p class="resume-line">Reference <strong id="resume-ref" class="mono"></strong> · <span id="resume-amount"></span> · <span id="resume-status"></span></p>
+      <div class="resume-actions">
+        <button type="button" class="btn btn-primary" id="resume-view">View payment details</button>
+        <button type="button" class="btn btn-ghost" id="resume-confirm">Confirm my payment</button>
+        <button type="button" class="linklike" id="resume-new">Start a new registration</button>
+      </div>
+    </section>
 
     <form class="register" id="register-form" novalidate aria-labelledby="register-title">
       <fieldset class="options">
@@ -455,6 +466,16 @@
             <p class="hint" id="h-email">Joining instructions are sent here.</p>
             <p class="err" id="e-email" role="alert"></p>
           </div>
+          <div class="field">
+            <label for="f-phone">Contact number <span class="opt-note">(optional)</span></label>
+            <input id="f-phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" aria-describedby="h-phone e-phone">
+            <p class="hint" id="h-phone">Only used if we need to reach you about this registration. Include your country code.</p>
+            <p class="err" id="e-phone" role="alert"></p>
+          </div>
+          <div class="hp" aria-hidden="true">
+            <label for="f-website">Leave this field empty</label>
+            <input id="f-website" name="website" type="text" tabindex="-1" autocomplete="off">
+          </div>
           <div class="field-row">
             <div class="field">
               <label for="f-country">Country</label>
@@ -491,9 +512,10 @@
             <div><dt>Children</dt><dd id="sum-kids">1</dd></div>
           </dl>
           <p class="sum-total"><span>Total</span><strong id="sum-total" aria-live="polite">$70</strong></p>
-          <button class="btn btn-primary btn-lg btn-block" type="submit" id="submit-btn">Continue to payment</button>
+          <button class="btn btn-primary btn-lg btn-block" type="submit" id="submit-btn">Register and view payment details</button>
           <div class="status" id="form-status" role="status" aria-live="polite" tabindex="-1"></div>
-          <p class="sum-fine">You will not be charged until you complete payment on the secure checkout page.</p>
+          <p class="sum-fine">After you register, you will see exactly how to pay. Your place is confirmed once we have checked your payment. Nothing is charged automatically.</p>
+          <p class="sum-fine"><button type="button" class="linklike" id="already-paid">Already paid? Confirm your payment</button></p>
         </aside>
       </div>
     </form>
@@ -525,7 +547,7 @@
         <li><span class="fd-day">Sunday <span data-text="ai.dayMonth">25 October</span></span><span class="fd-name" data-text="ai.title">AI Creators Lab</span></li>
       </ul>
 
-      <p class="final-price">Full weekend <strong data-price-fixed="usd:weekend">$70</strong> <span class="buy-or">or</span> <strong data-price-fixed="ngn:weekend">₦100,000</strong></p>
+      <p class="final-price">Full weekend <strong data-price-fixed="usd:weekend">$70</strong> <span class="buy-or">·</span> <strong data-price-fixed="gbp:weekend">£52.50</strong> <span class="buy-or">·</span> <strong data-price-fixed="ngn:weekend">₦100,000</strong></p>
       <a class="btn btn-ink btn-lg" href="#pricing" data-choose="weekend">Get the full weekend pass</a>
     </div>
 
@@ -585,6 +607,11 @@
     <p>© 2026 <span data-text="brand.name">FutureMakers Academy</span>. All rights reserved.</p>
   </div>
 </footer>
+
+<dialog class="pay-dialog" id="pay-dialog" aria-labelledby="pay-title" aria-describedby="pay-lead">
+  <div class="pay-inner" id="pay-inner"></div>
+</dialog>
+<div class="sr-only" id="pay-live" role="status" aria-live="polite"></div>
 
 <noscript><p class="noscript">This page needs JavaScript to show prices and the registration form. Please enable it, or contact the organisers.</p></noscript>
 </body>

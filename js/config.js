@@ -50,14 +50,11 @@ export const EVENT = {
   duration: 'Approximately 75 minutes',
 };
 
-/**
- * Session times are NOT confirmed. Leave `null` until they are.
- * When set, use 24-hour "HH:MM" and name the time zone(s) in `timeZoneNote`.
- */
+/** Confirmed start times. 24-hour "HH:MM" in Nigerian time (WAT, UTC+1). */
 export const SESSION_TIMES = {
-  business: null, // TODO(confirm): e.g. '10:00'
-  ai: null, // TODO(confirm): e.g. '10:00'
-  timeZoneNote: null, // TODO(confirm): e.g. 'Times shown in Lagos (WAT), New York (ET) and London (BST)'
+  business: '17:00',
+  ai: '17:00',
+  timeZoneNote: 'Nigerian time (WAT, UTC+1)',
   unconfirmedText: 'Start times will be confirmed to registered parents.',
 };
 
@@ -67,8 +64,16 @@ export const CURRENCIES = {
     symbol: '$',
     locale: 'en-US',
     label: 'US dollars',
-    toggleLabel: 'International ($)',
-    regionNote: 'Prices in US dollars for families in the US, UK and elsewhere.',
+    toggleLabel: 'US ($)',
+    regionNote: 'Prices in US dollars. Pay by Revolut.',
+  },
+  gbp: {
+    code: 'GBP',
+    symbol: '£',
+    locale: 'en-GB',
+    label: 'British pounds',
+    toggleLabel: 'UK (£)',
+    regionNote: 'Prices in British pounds. Pay by Revolut.',
   },
   ngn: {
     code: 'NGN',
@@ -76,16 +81,19 @@ export const CURRENCIES = {
     locale: 'en-NG',
     label: 'Nigerian naira',
     toggleLabel: 'Nigeria (₦)',
-    regionNote: 'Nigerian price list, in naira.',
+    regionNote: 'Nigerian price list, in naira. Pay by bank transfer.',
   },
 };
 
 /**
  * Prices are set by hand for each price list. No exchange rates are used
- * anywhere. Amounts are whole numbers in the main currency unit.
+ * anywhere. The backend (backend/apps-script/Code.gs) keeps its own copy and
+ * recomputes every amount, so a tampered browser cannot change what is owed.
+ * A test checks that both copies match.
  */
 export const PRICES = {
   usd: { business: 40, ai: 40, weekend: 70 },
+  gbp: { business: 30, ai: 30, weekend: 52.5 },
   ngn: { business: 60000, ai: 60000, weekend: 100000 },
 };
 
@@ -96,45 +104,50 @@ export const PRICES = {
 export const PRICE_IS_PER_CHILD = true; // TODO(confirm)
 
 /**
- * Checkout links from your payment provider. Leave '' until you have them.
- * An empty value keeps that checkout switched off: the form shows a clear
- * "payment isn't connected" message and sends the visitor nowhere.
- * No secrets belong here: these must be public hosted-checkout links.
+ * Manual payment details. These are public by nature (they are shown to
+ * parents). No secrets belong in this file.
  */
-export const PAYMENT_URLS = {
-  BUSINESS_PAYMENT_URL_USD: '',
-  AI_PAYMENT_URL_USD: '',
-  WEEKEND_PAYMENT_URL_USD: '',
-  BUSINESS_PAYMENT_URL_NGN: '',
-  AI_PAYMENT_URL_NGN: '',
-  WEEKEND_PAYMENT_URL_NGN: '',
+export const PAYMENTS = {
+  ngn: {
+    methods: [
+      { id: 'opay', label: 'Option A: OPay', bank: 'OPay', accountNumber: '7047167280', accountName: 'ONYEMA UZODINMA' },
+      { id: 'moniepoint', label: 'Option B: Moniepoint', bank: 'Moniepoint', accountNumber: '5295905851', accountName: 'KENELUMCHUKWU OKONJO' },
+    ],
+  },
+  international: {
+    revolutUrl: 'https://revolut.me/keneokonjo',
+  },
+  confirm: {
+    email: 'keneokonjo44@gmail.com',
+    whatsappE164: '2347047167280',
+    whatsappDisplay: '+234 7047167280',
+  },
 };
 
-/** Maps (currency, option) to the key above. Do not edit unless you rename the keys. */
-export function paymentUrlFor(currency, option) {
-  const key = `${option.toUpperCase()}_PAYMENT_URL_${currency.toUpperCase()}`;
-  return PAYMENT_URLS[key] || '';
-}
+/**
+ * Registration backend: a Google Apps Script web app bound to your Google
+ * Sheet (see backend/README.md). Paste the deployed "/exec" URL here.
+ * While empty, the form says plainly that registration is not connected yet
+ * and never pretends a registration was saved.
+ */
+export const BACKEND = {
+  url: '', // TODO(confirm): Apps Script web app URL
+  timeoutMs: 15000,
+};
 
 export const REGISTRATION = {
   maxChildren: 6,
-  /**
-   * Optional. A form-handling endpoint (for example a Formspree, Basin or
-   * Google Apps Script URL) that receives the parent's details before they
-   * are sent on to checkout. Leave '' to skip: details are then only
-   * validated in the browser and NOT stored anywhere.
-   */
-  formEndpoint: '', // TODO(confirm)
+  // `currency` is the default price list; `currencies` are the lists allowed for that country.
   countries: [
-    { value: 'NG', label: 'Nigeria', currency: 'ngn' },
-    { value: 'US', label: 'United States', currency: 'usd' },
-    { value: 'GB', label: 'United Kingdom', currency: 'usd' },
-    { value: 'OTHER', label: 'Another country', currency: 'usd' },
+    { value: 'NG', label: 'Nigeria', currency: 'ngn', currencies: ['ngn'] },
+    { value: 'US', label: 'United States', currency: 'usd', currencies: ['usd'] },
+    { value: 'GB', label: 'United Kingdom', currency: 'gbp', currencies: ['gbp'] },
+    { value: 'OTHER', label: 'Another country', currency: 'usd', currencies: ['usd', 'gbp'] },
   ],
 };
 
 export const CONTACT = {
-  email: '', // TODO(confirm): e.g. hello@yourdomain.com
+  email: 'keneokonjo44@gmail.com',
   privacyUrl: '', // TODO(confirm)
   termsUrl: '', // TODO(confirm)
   cancellationUrl: '', // TODO(confirm)
@@ -188,6 +201,10 @@ export const FAQ = [
   {
     q: 'What is included in the full weekend pass?',
     a: 'A place in both workshops: the Young Entrepreneurs Lab on Saturday 24 October and the AI Creators Lab on Sunday 25 October. It costs less than buying the two separately.',
+  },
+  {
+    q: 'How do I pay?',
+    a: 'After you register, a window shows exactly how to pay and your registration reference. In Nigeria you pay by bank transfer (OPay or Moniepoint) in naira. From the UK, US or elsewhere you pay through Revolut in pounds or dollars. Then you confirm your payment by email, WhatsApp or the confirmation form. Your place is confirmed once we have checked that the money arrived.',
   },
   {
     q: 'What does my child need to participate?',

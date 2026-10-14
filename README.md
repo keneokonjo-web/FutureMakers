@@ -12,7 +12,7 @@ npm test         # pricing unit tests + reference validation
 
 | What | Where |
 | --- | --- |
-| **All editable content** (brand, dates, session times, prices, checkout URLs, contact, posters, FAQ, recording policy) | `js/config.js` |
+| **All editable content** (brand, dates, session times, prices, payment details, backend URL, contact, posters, FAQ, recording policy) | `js/config.js` |
 | Page markup | `index.html` |
 | Styles, colour tokens (`:root`) | `css/styles.css` |
 | Pricing logic (pure functions) | `js/pricing.js` |
@@ -25,8 +25,8 @@ Search `js/config.js` for `TODO(confirm)` to find every value still waiting for 
 
 ## Before going live
 
-1. **Checkout URLs**: fill `PAYMENT_URLS` in `js/config.js` (six links, USD and NGN). While empty, "Continue to payment" validates the form and then shows an honest "payment is not switched on" message. It never pretends a payment happened.
-2. **Parent details**: without `REGISTRATION.formEndpoint`, details are validated but not stored. Add a form endpoint (e.g. Formspree) or capture details at checkout.
+1. **Registration backend**: follow `backend/README.md` (Google Sheet + Apps Script, ~10 min) and paste the web-app URL into `BACKEND.url` in `js/config.js`. While empty, the form says plainly that online registration is not switched on and saves nothing.
+2. **Payments** are manual: bank transfer (OPay/Moniepoint) for NGN, Revolut.me for GBP/USD. Account details live in `PAYMENTS` in `js/config.js`. You mark a registration **Paid** yourself in the sheet after checking the money arrived; nothing on the website can do it. Run `npm test` (unit + backend logic) and `npm run test:e2e` (browser tests).
 3. **Session times and time zones**: `SESSION_TIMES`.
 4. **Contact email, privacy, terms, cancellation/refund links**: `CONTACT`.
 5. **Final domain**: set `BRAND.siteUrl`, and change `og:image` / add `og:url` in `index.html` to absolute URLs.
