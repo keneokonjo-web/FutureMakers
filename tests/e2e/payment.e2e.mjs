@@ -394,6 +394,40 @@ await t('page content: GBP toggle, prices, session time 5:00 PM, FAQ how-to-pay'
   await page.context().close();
 });
 
+await t('"I\u2019ve made my payment" opens the receipt step with name, reference, amount; Back works; confirm from there', async () => {
+  reset();
+  const page = await newPage();
+  await fillAndSubmit(page, { option: 'weekend', currency: 'gbp', email: 'receipt@example.com', name: 'Ada Obi' });
+  await modalOpen(page);
+  const ref = await text(page, '[data-testid="pay-ref"]');
+  await page.click('[data-testid="made-payment"]');
+  await page.waitForSelector('[data-testid="rc-ref"]');
+  assert.equal(await text(page, '[data-testid="rc-ref"]'), ref);
+  assert.equal(await text(page, '[data-testid="rc-name"]'), 'Ada Obi');
+  assert.equal(await text(page, '[data-testid="rc-amount"]'), '£52.50 GBP');
+  assert.match(await text(page, '#pay-title'), /Send your receipt/);
+  const mail = new URL(await page.locator('#email-confirm').getAttribute('href'));
+  assert.ok(mail.searchParams.get('body').includes('Ada Obi'));
+  assert.ok(mail.searchParams.get('subject').endsWith(ref));
+  assert.ok((await page.locator('#wa-confirm').getAttribute('href')).includes('wa.me/2347047167280'));
+  await page.click('[data-copy="message"]');
+  const copied = await page.evaluate(() => navigator.clipboard.readText());
+  for (const s of ['Ada Obi', ref, '£52.50 GBP']) assert.ok(copied.includes(s), s);
+  await page.click('#back-to-pay');
+  await page.waitForSelector('[data-testid="pay-amount"]');
+  await page.click('[data-testid="made-payment"]');
+  await page.waitForSelector('#confirm-form');
+  assert.equal(await page.inputValue('#c-name'), 'Ada Obi');
+  await page.click('#confirm-submit');
+  await page.waitForFunction(() => document.querySelector('#confirm-status')?.textContent.includes('Thank you'));
+  assert.equal((await dump()).registrations.find((r) => r['Registration reference'] === ref)['Payment status'], 'Payment submitted \u2014 awaiting verification');
+  await page.setViewportSize({ width: 375, height: 700 });
+  const over = await page.evaluate(() => { const d = document.querySelector('#pay-dialog'); return d.scrollWidth - d.clientWidth; });
+  assert.ok(over <= 1);
+  await page.screenshot({ path: path.join(SHOTS, 'receipt-step-mobile.png') });
+  await page.context().close();
+});
+
 await browser.close(); site.close(); mock.close();
 const failed = results.filter((r) => r[0] === 'FAIL');
 console.log(`\n${results.length - failed.length}/${results.length} passed`);

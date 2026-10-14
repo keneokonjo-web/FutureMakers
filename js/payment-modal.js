@@ -285,27 +285,32 @@ function confirmForm(reg, { standalone = false } = {}) {
   return f;
 }
 
+function evidenceButtons(reg, onOpen) {
+  const emailA = h('a', { class: 'btn btn-ghost', id: 'email-confirm', href: emailLink(reg), 'data-testid': 'email-confirm', text: 'Email Payment Confirmation' });
+  const waA = h('a', { class: 'btn btn-ghost', id: 'wa-confirm', href: whatsappLink(reg), target: '_blank', rel: 'noopener noreferrer', 'data-testid': 'wa-confirm', text: 'Send Screenshot on WhatsApp' });
+  const afterLink = h('p', { class: 'pay-note small', id: 'after-link', hidden: true, 'aria-live': 'polite' });
+  const track = (channel, text) => () => {
+    callBackend({ action: 'evidence_intent', reference: reg.reference, email: reg.email, channel }).catch(() => {});
+    afterLink.hidden = false;
+    afterLink.textContent = `${text} Once you have sent your receipt with reference ${reg.reference}, use the form so we can match it quickly. Your registration stays pending until we have checked your payment.`;
+    onOpen?.();
+  };
+  emailA.addEventListener('click', track('email', 'Your email app should have opened.'));
+  waA.addEventListener('click', track('whatsapp', 'WhatsApp should have opened.'));
+  return { emailA, waA, afterLink };
+}
+
 function renderPayment(reg) {
   const exact = formatExact(reg.currency, reg.amountOwed);
   const refEl = h('strong', { class: 'ref-big mono', id: 'pay-ref', 'data-testid': 'pay-ref', text: reg.reference });
   const amtEl = h('strong', { class: 'amount-big', id: 'pay-amount', 'data-testid': 'pay-amount', text: exact });
   const lines = sessionLines(reg.option);
 
-  const emailA = h('a', { class: 'btn btn-ghost', id: 'email-confirm', href: emailLink(reg), 'data-testid': 'email-confirm', text: 'Email Payment Confirmation' });
-  const waA = h('a', { class: 'btn btn-ghost', id: 'wa-confirm', href: whatsappLink(reg), target: '_blank', rel: 'noopener noreferrer', 'data-testid': 'wa-confirm', text: 'Send Screenshot on WhatsApp' });
+  const { emailA, waA, afterLink } = evidenceButtons(reg, () => { details.open = true; });
   const details = h('details', { class: 'confirm-details', id: 'confirm-details' },
     h('summary', { text: 'Option 3: Confirm on this website' }),
     h('p', { class: 'pay-note', text: 'Tell us you have paid. This does not mark you as paid: we check every payment by hand first.' }),
     confirmForm(reg));
-  const afterLink = h('p', { class: 'pay-note small', id: 'after-link', hidden: true, 'aria-live': 'polite' });
-  const track = (channel, text) => () => {
-    callBackend({ action: 'evidence_intent', reference: reg.reference, email: reg.email, channel }).catch(() => {});
-    afterLink.hidden = false;
-    afterLink.textContent = `${text} Once you have sent your receipt with reference ${reg.reference}, you can also use Option 3 below so we can match it quickly. Your registration stays pending until we have checked your payment.`;
-  };
-  emailA.addEventListener('click', track('email', 'Your email app should have opened.'));
-  waA.addEventListener('click', track('whatsapp', 'WhatsApp should have opened.'));
-
   inner.replaceChildren(
     h('div', { class: 'pay-head' },
       h('div', {}, h('p', { class: 'eyebrow', text: 'Step 2 of 2' }), h('h2', { id: 'pay-title', tabindex: '-1', text: 'Complete your payment' })),
@@ -324,6 +329,9 @@ function renderPayment(reg) {
       h('p', { class: 'pay-note small', text: 'Write this reference down or copy it. It is saved on this device too, but your email and our records are the safest place for it.' }),
     ),
     reg.currency === 'ngn' ? renderNgn(reg) : renderIntl(reg),
+    h('div', { class: 'paid-cta' },
+      h('p', { class: 'pay-note', text: 'Finished paying? Tap the button to open the next step, where you send your receipt and name.' }),
+      h('button', { type: 'button', class: 'btn btn-primary btn-lg', id: 'made-payment', 'data-testid': 'made-payment', text: 'I\u2019ve made my payment' })),
     h('section', { class: 'pay-section confirm-section', 'aria-labelledby': 'confirm-title' },
       h('h3', { id: 'confirm-title', text: 'Confirm Your Payment' }),
       h('p', { class: 'pay-note', text: `After paying, send us your receipt so we can verify it. Please include your registration reference (${reg.reference}) in your message.` }),
@@ -336,13 +344,67 @@ function renderPayment(reg) {
     ),
     h('div', { class: 'pay-actions' },
       copyButton('all payment details', 'all', () => allDetailsText(reg), null),
-      h('button', { type: 'button', class: 'btn btn-primary', 'data-close': true, text: 'Close' }),
+      h('button', { type: 'button', class: 'btn btn-ghost', 'data-close': true, text: 'Close' }),
     ),
     h('p', { class: 'pay-note small', text: 'Your place is confirmed only after we have checked that your payment arrived. Nothing is ever charged automatically.' }),
   );
+  $('#made-payment', inner).addEventListener('click', () => { renderReceipt(reg); show(opener); });
   // Copy-all button wants a visible label.
   const all = $('[data-copy="all"] span', inner);
   if (all) all.textContent = 'Copy all payment details';
+}
+
+function renderReceipt(reg) {
+  const exact = formatExact(reg.currency, reg.amountOwed);
+  const refEl = h('strong', { class: 'ref-big mono', id: 'rc-ref', 'data-testid': 'rc-ref', text: reg.reference });
+  const { emailA, waA, afterLink } = evidenceButtons(reg, () => { const d = $('#confirm-details', inner); if (d) d.open = true; });
+  const form = h('div', {}, confirmForm(reg));
+  inner.replaceChildren(
+    h('div', { class: 'pay-head' },
+      h('div', {}, h('p', { class: 'eyebrow', text: 'Step 3 of 3' }), h('h2', { id: 'pay-title', tabindex: '-1', text: 'Send your receipt' })),
+      closeBtn()),
+    h('p', { id: 'pay-lead', class: 'pay-lead', 'data-testid': 'receipt-lead', text: 'Thank you for paying. Send us your receipt together with your name and reference so we can match your payment and confirm your place.' }),
+    chip(reg.status || STATUS.pending),
+    h('section', { class: 'pay-summary', 'aria-label': 'Details to include' },
+      h('p', { class: 'pay-note', text: 'Include these details when you send your receipt:' }),
+      h('dl', { class: 'pay-dl' },
+        kv('Parent/guardian name', h('strong', { 'data-testid': 'rc-name', text: reg.parentName || '(your name)' })),
+        kv('Amount paid', h('strong', { 'data-testid': 'rc-amount', text: exact })),
+        kv('Package', h('span', { text: packageLabel(reg.option) })),
+      ),
+      h('div', { class: 'pay-ref' }, h('span', { class: 'pay-label', text: 'Your registration reference' }), h('span', { class: 'copy-row' }, refEl, copyButton('reference', 'reference', () => reg.reference, () => refEl))),
+      h('div', { class: 'pay-actions' }, copyButton('message to send', 'message', () => receiptMessage(reg), null)),
+    ),
+    h('section', { class: 'pay-section confirm-section', 'aria-labelledby': 'confirm-title' },
+      h('h3', { id: 'confirm-title', text: 'Send your receipt' }),
+      h('div', { class: 'confirm-opts' },
+        h('div', { class: 'confirm-opt' }, h('h4', { text: 'Option 1: Email' }), h('p', { text: `Email your receipt to ${PAYMENTS.confirm.email}. Your name and reference are filled in.` }), emailA),
+        h('div', { class: 'confirm-opt' }, h('h4', { text: 'Option 2: WhatsApp' }), h('p', { text: `Send a screenshot of your payment receipt to ${PAYMENTS.confirm.whatsappDisplay} on WhatsApp.` }), waA),
+      ),
+      afterLink,
+      h('details', { class: 'confirm-details', id: 'confirm-details', open: true },
+        h('summary', { text: 'Option 3: Confirm on this website' }),
+        h('p', { class: 'pay-note', text: 'Tell us you have paid. This does not mark you as paid: we check every payment by hand first.' }),
+        form.firstChild),
+    ),
+    h('div', { class: 'pay-actions' },
+      h('button', { type: 'button', class: 'btn btn-ghost', id: 'back-to-pay', text: '\u2190 Back to payment details' }),
+      h('button', { type: 'button', class: 'btn btn-primary', 'data-close': true, text: 'Close' })),
+    h('p', { class: 'pay-note small', text: 'Your place is confirmed only after we have checked that your payment arrived.' }),
+  );
+  $('#back-to-pay', inner).addEventListener('click', () => { renderPayment(reg); show(opener); });
+  const msg = $('[data-copy="message"] span', inner);
+  if (msg) msg.textContent = 'Copy message to send';
+}
+
+export function receiptMessage(reg) {
+  return [
+    'Hello, I have made my payment for FutureMakers Academy.',
+    `Name: ${reg.parentName || ''}`,
+    `Registration reference: ${reg.reference}`,
+    `Amount paid: ${formatExact(reg.currency, reg.amountOwed)}`,
+    'My payment receipt is attached.',
+  ].join('\n');
 }
 
 function renderConfirmOnly(prefill) {
