@@ -196,3 +196,43 @@ test('columns are found by header name (reordering is safe)', () => {
   assert.equal(r.ok, true);
   assert.equal(r.amountOwed, 100000);
 });
+
+test('performance: register and confirm use a small, fixed number of sheet calls (no per-cell writes)', () => {
+  const b = makeBackend();
+  const counts = { reads: 0, writes: 0 };
+  const wrap = (sheet) => {
+    if (sheet.__wrapped) return;
+    sheet.__wrapped = true;
+    const getRange = sheet.getRange.bind(sheet);
+    const getDataRange = sheet.getDataRange.bind(sheet);
+    sheet.getDataRange = () => { const r = getDataRange(); counts.reads += 1; return r; };
+    sheet.getRange = (...a) => {
+      const r = getRange(...a);
+      return new Proxy(r, { get(t, k) {
+        if (['getValues', 'getValue'].includes(k)) counts.reads += 1;
+        if (['setValues', 'setValue', 'setNumberFormats'].includes(k)) counts.writes += 1;
+        return t[k];
+      } });
+    };
+  };
+  b.call(validBody({ reference: 'FM-AAAAA2' })); // creates the sheets
+  const wrapAll = () => b.sheets.forEach(wrap);
+  wrapAll();
+  counts.reads = 0; counts.writes = 0;
+  assert.equal(b.call(validBody({ reference: 'FM-PERF22' })).ok, true);
+  assert.ok(counts.reads <= 2, `register reads ${counts.reads}`);
+  assert.ok(counts.writes <= 3, `register writes ${counts.writes}`);
+  counts.reads = 0; counts.writes = 0;
+  wrapAll();
+  assert.equal(b.call({ action: 'confirm', reference: 'FM-PERF22', email: 'ada@example.com', method: 'OPay', amountPaid: 100000 }).ok, true);
+  assert.ok(counts.reads <= 3, `confirm reads ${counts.reads}`);
+  assert.ok(counts.writes <= 4, `confirm writes ${counts.writes}`);
+});
+
+test('lock is released after every action, including failures', () => {
+  const b = makeBackend();
+  b.call(validBody());
+  b.call(validBody({ email: 'other@example.com' })); // reference_conflict
+  b.call({ action: 'confirm', reference: 'FM-NOPE22', email: 'x@y.com', method: 'OPay', amountPaid: 1 });
+  assert.equal(b.state.locks, 0);
+});

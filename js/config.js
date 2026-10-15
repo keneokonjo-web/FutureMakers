@@ -132,7 +132,7 @@ export const PAYMENTS = {
  */
 export const BACKEND = {
   url: 'https://script.google.com/macros/s/AKfycbz4y8G4TEcGTlE9S-C9Df5tKVlw9dAlzZpteyv-Fk9g1OT3GiWSDUzVGKB5vTgl2WLbKg/exec',
-  timeoutMs: 15000,
+  timeoutMs: 30000,
 };
 
 export const REGISTRATION = {

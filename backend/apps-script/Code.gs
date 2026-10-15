@@ -132,10 +132,11 @@ function fail_(code, message) {
 }
 
 function route_(body) {
+  // Validation runs before the lock is taken; each action locks only around its sheet work.
   switch (body.action) {
-    case 'register': return withLock_(function () { return register_(body); });
-    case 'confirm': return withLock_(function () { return confirm_(body); });
-    case 'evidence_intent': return withLock_(function () { return evidenceIntent_(body); });
+    case 'register': return register_(body);
+    case 'confirm': return confirm_(body);
+    case 'evidence_intent': return evidenceIntent_(body);
     case 'status': return lookupStatus_(body);
     default: throw fail_('bad_request', 'Unknown action.');
   }
@@ -175,19 +176,37 @@ function paymentMethodFor_(currency) {
 /* Sheet helpers                                                      */
 /* ------------------------------------------------------------------ */
 
-function getSheet_(name, headers) {
+/**
+ * Opens a sheet and reads it ONCE. `data` is the whole sheet as a 2D array
+ * (row 0 = headers); `cols` maps header name -> 1-based column, so you can
+ * reorder or add columns safely. With headerOnly, only row 1 is read (used for
+ * the append-only Confirmations log, which can grow large).
+ */
+function openSheet_(name, headers, headerOnly, skipColumnCheck) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName(name);
-  if (!sheet) {
-    sheet = ss.insertSheet(name);
+  var sheet = ss.getSheetByName(name) || ss.insertSheet(name);
+  var data;
+  var lastRow;
+  if (headerOnly) {
+    lastRow = sheet.getLastRow();
+    data = lastRow ? sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues() : [['']];
+  } else {
+    data = sheet.getDataRange().getValues();
+    lastRow = data.length;
   }
-  if (sheet.getLastRow() === 0) {
+  var empty = data.length === 1 && data[0].every(function (c) { return c === ''; });
+  if (empty) {
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    data = [headers.slice()];
+    lastRow = 1;
   }
-  return sheet;
+  var cols = {};
+  for (var i = 0; i < data[0].length; i++) cols[String(data[0][i])] = i + 1;
+  if (!skipColumnCheck) requireColumns_(cols, headers);
+  return { sheet: sheet, data: data, cols: cols, lastRow: lastRow };
 }
 
-/** Map of header name -> 1-based column, read from row 1 so you can reorder columns safely. */
+/** Map of header name -> 1-based column, read from row 1 (used by the admin tools). */
 function columns_(sheet) {
   var width = sheet.getLastColumn();
   var row = width ? sheet.getRange(1, 1, 1, width).getValues()[0] : [];
@@ -202,20 +221,18 @@ function requireColumns_(map, headers) {
   }
 }
 
-function findRow_(sheet, cols, reference) {
-  var last = sheet.getLastRow();
-  if (last < 2) return 0;
-  var refs = sheet.getRange(2, cols['Registration reference'], last - 1, 1).getValues();
-  for (var i = 0; i < refs.length; i++) {
-    if (String(refs[i][0]) === reference) return i + 2;
+/** Index into s.data of the row with this reference, or -1. */
+function findIndex_(s, reference) {
+  var col = s.cols['Registration reference'] - 1;
+  for (var i = 1; i < s.data.length; i++) {
+    if (String(s.data[i][col]) === reference) return i;
   }
-  return 0;
+  return -1;
 }
 
-function readRow_(sheet, cols, row) {
-  var values = sheet.getRange(row, 1, 1, sheet.getLastColumn()).getValues()[0];
+function rowObject_(s, index) {
   var out = {};
-  Object.keys(cols).forEach(function (h) { out[h] = values[cols[h] - 1]; });
+  Object.keys(s.cols).forEach(function (h) { out[h] = s.data[index][s.cols[h] - 1]; });
   return out;
 }
 
@@ -252,6 +269,33 @@ function summary_(rec, extra) {
   return out;
 }
 
+/**
+ * Writes one new row in two calls (formats, then values). Text columns are
+ * stored as plain text so nothing is ever treated as a formula.
+ */
+function appendRecord_(s, values) {
+  var width = s.data[0].length;
+  var row = s.lastRow + 1;
+  var line = [];
+  var formats = [];
+  for (var c = 0; c < width; c++) { line.push(''); formats.push('@'); }
+  Object.keys(values).forEach(function (h) {
+    if (!s.cols[h]) return;
+    line[s.cols[h] - 1] = values[h];
+    formats[s.cols[h] - 1] = NUMERIC_HEADERS.indexOf(h) >= 0 ? '0.##' : '@';
+  });
+  var range = s.sheet.getRange(row, 1, 1, width);
+  range.setNumberFormats([formats]);
+  range.setValues([line]);
+}
+
+/** Updates several cells of an already-read row with ONE write. */
+function updateRow_(s, index, changes) {
+  var line = s.data[index].slice();
+  Object.keys(changes).forEach(function (h) { line[s.cols[h] - 1] = changes[h]; });
+  s.sheet.getRange(index + 1, 1, 1, line.length).setValues([line]);
+}
+
 /* ------------------------------------------------------------------ */
 /* Actions                                                            */
 /* ------------------------------------------------------------------ */
@@ -285,139 +329,114 @@ function register_(b) {
 
   var amounts = amountFor_(currency, option, children);
 
-  var sheet = getSheet_(REGISTRATIONS_SHEET, HEADERS);
-  var cols = columns_(sheet);
-  requireColumns_(cols, HEADERS);
+  // Only the sheet work (one read, one write) happens while holding the lock.
+  return withLock_(function () {
+    var s = openSheet_(REGISTRATIONS_SHEET, HEADERS);
 
-  // Retries of the same registration (same reference + email) are safe: return what is stored.
-  var existing = findRow_(sheet, cols, reference);
-  if (existing) {
-    var rec = readRow_(sheet, cols, existing);
-    if (sameEmail_(rec['Email'], email)) return summary_(rec, { duplicate: true });
-    throw fail_('reference_conflict', 'That reference is already in use.');
-  }
+    // Retries of the same registration (same reference + email) are safe: return what is stored.
+    var existing = findIndex_(s, reference);
+    if (existing > 0) {
+      var rec = rowObject_(s, existing);
+      if (sameEmail_(rec['Email'], email)) return summary_(rec, { duplicate: true });
+      throw fail_('reference_conflict', 'That reference is already in use.');
+    }
 
-  // Per-email rate limit.
-  var last = sheet.getLastRow();
-  if (last >= 2) {
-    var emails = sheet.getRange(2, cols['Email'], last - 1, 1).getValues();
-    var dates = sheet.getRange(2, cols['Registration date'], last - 1, 1).getValues();
+    // Per-email rate limit, from the data already read.
+    var emailCol = s.cols['Email'] - 1;
+    var dateCol = s.cols['Registration date'] - 1;
     var cutoff = Date.now() - 24 * 60 * 60 * 1000;
     var recent = 0;
-    for (var i = 0; i < emails.length; i++) {
-      if (sameEmail_(emails[i][0], email) && timeOf_(dates[i][0]) >= cutoff) recent++;
+    for (var i = 1; i < s.data.length; i++) {
+      if (sameEmail_(s.data[i][emailCol], email) && timeOf_(s.data[i][dateCol]) >= cutoff) recent++;
     }
     if (recent >= MAX_REGISTRATIONS_PER_EMAIL_PER_DAY) {
       throw fail_('rate_limited', 'Too many registrations from this email today. Please email us for help.');
     }
-  }
 
-  var values = {};
-  values['Registration reference'] = reference;
-  values['Registration date'] = nowText_();
-  values['Parent/guardian name'] = name;
-  values['Email'] = email;
-  values['Contact number'] = phone;
-  values['Country'] = COUNTRIES[country];
-  values['Package'] = PACKAGES[option].name;
-  values['Workshop(s)'] = PACKAGES[option].workshops;
-  values['Children'] = children;
-  values['Age bands'] = bands.map(function (x) { return AGE_BANDS[x]; }).join(', ');
-  values['Currency'] = currency.toUpperCase();
-  values['Amount per child'] = amounts.unit;
-  values['Amount owed'] = amounts.total;
-  values['Payment method'] = paymentMethodFor_(currency);
-  values['Payment status'] = STATUS_PENDING;
-  values['Payment verification date'] = '';
-  values['Verified by'] = '';
-  values['Confirmation submitted at'] = '';
-  values['Amount paid (reported)'] = '';
-  values['Method used (reported)'] = '';
-  values['Transaction reference (reported)'] = '';
-  values['Confirmation channel opened'] = '';
-  values['Notes (admin)'] = '';
+    var values = {};
+    values['Registration reference'] = reference;
+    values['Registration date'] = nowText_();
+    values['Parent/guardian name'] = name;
+    values['Email'] = email;
+    values['Contact number'] = phone;
+    values['Country'] = COUNTRIES[country];
+    values['Package'] = PACKAGES[option].name;
+    values['Workshop(s)'] = PACKAGES[option].workshops;
+    values['Children'] = children;
+    values['Age bands'] = bands.map(function (x) { return AGE_BANDS[x]; }).join(', ');
+    values['Currency'] = currency.toUpperCase();
+    values['Amount per child'] = amounts.unit;
+    values['Amount owed'] = amounts.total;
+    values['Payment method'] = paymentMethodFor_(currency);
+    values['Payment status'] = STATUS_PENDING;
 
-  appendRecord_(sheet, cols, values);
-  SpreadsheetApp.flush();
-
-  // Read back what was actually stored and report that, so the page never shows details the sheet lacks.
-  var row = findRow_(sheet, cols, reference);
-  if (!row) throw new Error('Row was not found after writing.');
-  return summary_(readRow_(sheet, cols, row), { duplicate: false });
-}
-
-/** Writes one row; text columns are stored as plain text so nothing is ever treated as a formula. */
-function appendRecord_(sheet, cols, values) {
-  var width = sheet.getLastColumn();
-  var row = sheet.getLastRow() + 1;
-  var line = [];
-  var formats = [];
-  for (var c = 0; c < width; c++) { line.push(''); formats.push('@'); }
-  Object.keys(values).forEach(function (h) {
-    if (!cols[h]) return;
-    line[cols[h] - 1] = values[h];
-    formats[cols[h] - 1] = NUMERIC_HEADERS.indexOf(h) >= 0 ? '0.##' : '@';
+    appendRecord_(s, values);
+    SpreadsheetApp.flush();
+    return summary_(values, { duplicate: false });
   });
-  var range = sheet.getRange(row, 1, 1, width);
-  range.setNumberFormats([formats]);
-  range.setValues([line]);
 }
 
-function findOwnedRow_(b) {
+/** Finds the registration for reference + email in an already-read sheet. */
+function findOwned_(s, b) {
   var reference = cleanText_(b.reference, 20).toUpperCase();
   var email = cleanText_(b.email, 254);
-  if (!REFERENCE_RE.test(reference) || !EMAIL_RE.test(email)) throw fail_('not_found', 'We could not find that registration.');
-  var sheet = getSheet_(REGISTRATIONS_SHEET, HEADERS);
-  var cols = columns_(sheet);
-  requireColumns_(cols, HEADERS);
-  var row = findRow_(sheet, cols, reference);
-  if (!row) throw fail_('not_found', 'We could not find that registration. Check the reference and email.');
-  var rec = readRow_(sheet, cols, row);
-  if (!sameEmail_(rec['Email'], email)) throw fail_('not_found', 'We could not find that registration. Check the reference and email.');
-  return { sheet: sheet, cols: cols, row: row, rec: rec, reference: reference, email: email };
+  var notFound = fail_('not_found', 'We could not find that registration. Check the reference and email.');
+  if (!REFERENCE_RE.test(reference) || !EMAIL_RE.test(email)) throw notFound;
+  var index = findIndex_(s, reference);
+  if (index < 1) throw notFound;
+  var rec = rowObject_(s, index);
+  if (!sameEmail_(rec['Email'], email)) throw notFound;
+  return { index: index, rec: rec, reference: reference, email: email };
 }
 
 function lookupStatus_(b) {
-  var hit = findOwnedRow_(b);
+  var s = openSheet_(REGISTRATIONS_SHEET, HEADERS);
+  var hit = findOwned_(s, b);
   return summary_(hit.rec, { verifiedAt: String(hit.rec['Payment verification date'] || '') });
 }
 
 function confirm_(b) {
-  var hit = findOwnedRow_(b);
   var method = String(b.method || '');
   if (PAYMENT_METHODS.indexOf(method) < 0) throw fail_('invalid_method', 'Please choose how you paid.');
   var paid = Number(b.amountPaid);
   if (!(paid > 0 && paid <= 100000000)) throw fail_('invalid_amount', 'Please enter the amount you paid.');
   paid = Math.round(paid * 100) / 100;
   var txn = cleanText_(b.transactionRef, 80);
-  var name = cleanText_(b.parentName, 100) || String(hit.rec['Parent/guardian name']);
-  var stamp = nowText_();
 
-  var alreadyPaid = String(hit.rec['Payment status']) === STATUS_PAID;
-  // A payment confirmation can move Pending -> Submitted. It can never set Paid, and never downgrades Paid.
-  if (!alreadyPaid) setCell_(hit.sheet, hit.cols, hit.row, 'Payment status', STATUS_SUBMITTED);
-  setCell_(hit.sheet, hit.cols, hit.row, 'Confirmation submitted at', stamp);
-  setCell_(hit.sheet, hit.cols, hit.row, 'Amount paid (reported)', paid);
-  setCell_(hit.sheet, hit.cols, hit.row, 'Method used (reported)', method);
-  setCell_(hit.sheet, hit.cols, hit.row, 'Transaction reference (reported)', txn);
+  return withLock_(function () {
+    var s = openSheet_(REGISTRATIONS_SHEET, HEADERS);
+    var hit = findOwned_(s, b);
+    var name = cleanText_(b.parentName, 100) || String(hit.rec['Parent/guardian name']);
+    var stamp = nowText_();
 
-  var log = getSheet_(CONFIRMATIONS_SHEET, CONFIRMATION_HEADERS);
-  var logCols = columns_(log);
-  requireColumns_(logCols, CONFIRMATION_HEADERS);
-  appendRecord_(log, logCols, {
-    'Submitted at': stamp,
-    'Registration reference': hit.reference,
-    'Parent/guardian name': name,
-    'Email': hit.email,
-    'Payment method': method,
-    'Amount paid (reported)': paid,
-    'Transaction reference': txn,
-    'Channel': 'Website form'
+    var alreadyPaid = String(hit.rec['Payment status']) === STATUS_PAID;
+    // A payment confirmation can move Pending -> Submitted. It can never set Paid, and never downgrades Paid.
+    var changes = {
+      'Confirmation submitted at': stamp,
+      'Amount paid (reported)': paid,
+      'Method used (reported)': method,
+      'Transaction reference (reported)': txn
+    };
+    if (!alreadyPaid) changes['Payment status'] = STATUS_SUBMITTED;
+    updateRow_(s, hit.index, changes);
+
+    var log = openSheet_(CONFIRMATIONS_SHEET, CONFIRMATION_HEADERS, true, true);
+    appendRecord_(log, {
+      'Submitted at': stamp,
+      'Registration reference': hit.reference,
+      'Parent/guardian name': name,
+      'Email': hit.email,
+      'Payment method': method,
+      'Amount paid (reported)': paid,
+      'Transaction reference': txn,
+      'Channel': 'Website form'
+    });
+    SpreadsheetApp.flush();
+
+    var fresh = rowObject_(s, hit.index);
+    Object.keys(changes).forEach(function (h) { fresh[h] = changes[h]; });
+    return summary_(fresh, { alreadyPaid: alreadyPaid });
   });
-  SpreadsheetApp.flush();
-
-  var fresh = readRow_(hit.sheet, hit.cols, hit.row);
-  return summary_(fresh, { alreadyPaid: alreadyPaid });
 }
 
 /**
@@ -428,11 +447,14 @@ function confirm_(b) {
 function evidenceIntent_(b) {
   var channel = String(b.channel || '');
   if (channel !== 'email' && channel !== 'whatsapp') throw fail_('bad_request', 'Unknown channel.');
-  var hit = findOwnedRow_(b);
-  var prior = String(hit.rec['Confirmation channel opened'] || '');
-  var entry = channel + ' @ ' + nowText_();
-  setCell_(hit.sheet, hit.cols, hit.row, 'Confirmation channel opened', prior ? prior + '; ' + entry : entry);
-  return { ok: true, status: hit.rec['Payment status'] };
+  return withLock_(function () {
+    var s = openSheet_(REGISTRATIONS_SHEET, HEADERS);
+    var hit = findOwned_(s, b);
+    var prior = String(hit.rec['Confirmation channel opened'] || '');
+    var entry = channel + ' @ ' + nowText_();
+    setCell_(s.sheet, s.cols, hit.index + 1, 'Confirmation channel opened', prior ? prior + '; ' + entry : entry);
+    return { ok: true, status: hit.rec['Payment status'] };
+  });
 }
 
 /* ------------------------------------------------------------------ */
@@ -547,8 +569,8 @@ function onEdit(e) {
 
 /** Creates the sheets, headers, status dropdown and colours. Safe to run again. */
 function setup() {
-  var reg = getSheet_(REGISTRATIONS_SHEET, HEADERS);
-  getSheet_(CONFIRMATIONS_SHEET, CONFIRMATION_HEADERS);
+  var reg = openSheet_(REGISTRATIONS_SHEET, HEADERS, true, true).sheet;
+  openSheet_(CONFIRMATIONS_SHEET, CONFIRMATION_HEADERS, true, true);
   var cols = columns_(reg);
   var missing = HEADERS.filter(function (h) { return !cols[h]; });
   if (missing.length) {
@@ -568,7 +590,7 @@ function setup() {
       SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo(STATUS_PENDING).setBackground('#F4CCCC').setRanges([statusRange]).build()
     ];
     reg.setConditionalFormatRules(rules);
-    getSheet_(CONFIRMATIONS_SHEET, CONFIRMATION_HEADERS).setFrozenRows(1);
+    openSheet_(CONFIRMATIONS_SHEET, CONFIRMATION_HEADERS, true, true).sheet.setFrozenRows(1);
   } catch (err) {
     console.error('Cosmetic setup skipped: ' + err);
   }

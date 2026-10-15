@@ -35,8 +35,7 @@ export class ApiError extends Error {
   }
 }
 
-/** POSTs one action to the backend. Resolves only with a response the server marked ok. */
-export async function callBackend(body, { fetchImpl = globalThis.fetch, url = BACKEND.url, timeoutMs = BACKEND.timeoutMs } = {}) {
+async function attemptOnce(body, { fetchImpl, url, timeoutMs }) {
   if (!url) throw new ApiError('not_connected', 'Online registration is not connected yet.');
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -59,12 +58,32 @@ export async function callBackend(body, { fetchImpl = globalThis.fetch, url = BA
   try {
     data = await res.json();
   } catch {
-    throw new ApiError('bad_response', 'The registration service sent an unexpected reply.', true);
+    throw new ApiError(res.status === 404 ? 'not_found_http' : 'bad_response', 'The registration service sent an unexpected reply.', true);
   }
   if (!res.ok || !data || data.ok !== true) {
     throw new ApiError(data?.error || 'server_error', data?.message || 'The registration service reported a problem.', data?.error === 'busy' || data?.error === 'server_error');
   }
   return data;
+}
+
+// Failures that look like a cold start or a blip: network error, timeout, a non-JSON page or a Google 404.
+const TRANSIENT = new Set(['network', 'bad_response', 'not_found_http']);
+
+/**
+ * POSTs one action to the backend. Resolves only with a response the server
+ * marked ok. Makes ONE automatic retry for transient failures; this is safe
+ * because registration (same reference + email) and confirmation are
+ * idempotent on the server. After the retry fails the error is thrown as before.
+ */
+export async function callBackend(body, { fetchImpl = globalThis.fetch, url = BACKEND.url, timeoutMs = BACKEND.timeoutMs, retryDelayMs = 600 } = {}) {
+  const opts = { fetchImpl, url, timeoutMs };
+  try {
+    return await attemptOnce(body, opts);
+  } catch (err) {
+    if (!(err instanceof ApiError) || !TRANSIENT.has(err.code)) throw err;
+    await new Promise((resolve) => { setTimeout(resolve, retryDelayMs); });
+    return attemptOnce(body, opts);
+  }
 }
 
 /**

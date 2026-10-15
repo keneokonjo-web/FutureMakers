@@ -71,9 +71,35 @@ test('validateRegistration rejects anything that does not match the price list',
 });
 test('callBackend: not connected, network failure, server error, success', async () => {
   await assert.rejects(callBackend({}, { url: '' }), (e) => e instanceof ApiError && e.code === 'not_connected');
-  await assert.rejects(callBackend({}, { url: 'http://x', fetchImpl: async () => { throw new TypeError('fail'); } }), (e) => e.code === 'network' && e.retryable);
+  await assert.rejects(callBackend({}, { url: 'http://x', retryDelayMs: 0, fetchImpl: async () => { throw new TypeError('fail'); } }), (e) => e.code === 'network' && e.retryable);
   await assert.rejects(callBackend({}, { url: 'http://x', fetchImpl: async () => ({ ok: true, json: async () => ({ ok: false, error: 'invalid_package', message: 'no' }) }) }), (e) => e.code === 'invalid_package');
-  await assert.rejects(callBackend({}, { url: 'http://x', fetchImpl: async () => ({ ok: true, json: async () => { throw new Error('html'); } }) }), (e) => e.code === 'bad_response');
+  await assert.rejects(callBackend({}, { url: 'http://x', retryDelayMs: 0, fetchImpl: async () => ({ ok: true, json: async () => { throw new Error('html'); } }) }), (e) => e.code === 'bad_response');
   const good = await callBackend({}, { url: 'http://x', fetchImpl: async () => ({ ok: true, json: async () => ({ ok: true, reference: 'FM-ABC234' }) }) });
   assert.equal(good.reference, 'FM-ABC234');
+});
+
+test('callBackend retries exactly once for transient failures, never for server answers', async () => {
+  const ok = { ok: true, json: async () => ({ ok: true, reference: 'FM-ABC234' }) };
+  const html404 = { ok: false, status: 404, json: async () => { throw new Error('html'); } };
+  const run = (responses) => {
+    let calls = 0;
+    const fetchImpl = async () => { const r = responses[Math.min(calls, responses.length - 1)]; calls += 1; if (r instanceof Error) throw r; return r; };
+    return { fetchImpl, calls: () => calls };
+  };
+  let t = run([new TypeError('x'), ok]);
+  assert.equal((await callBackend({}, { url: 'http://x', retryDelayMs: 0, fetchImpl: t.fetchImpl })).ok, true);
+  assert.equal(t.calls(), 2);
+  t = run([html404, ok]);
+  assert.equal((await callBackend({}, { url: 'http://x', retryDelayMs: 0, fetchImpl: t.fetchImpl })).ok, true);
+  assert.equal(t.calls(), 2);
+  t = run([html404, html404, ok]);
+  await assert.rejects(callBackend({}, { url: 'http://x', retryDelayMs: 0, fetchImpl: t.fetchImpl }), (e) => e instanceof ApiError);
+  assert.equal(t.calls(), 2, 'one retry only');
+  const rejected = { ok: true, json: async () => ({ ok: false, error: 'invalid_package', message: 'no' }) };
+  t = run([rejected, ok]);
+  await assert.rejects(callBackend({}, { url: 'http://x', retryDelayMs: 0, fetchImpl: t.fetchImpl }), (e) => e.code === 'invalid_package');
+  assert.equal(t.calls(), 1, 'a real server answer is never retried');
+  t = run([ok]);
+  await assert.rejects(callBackend({}, { url: '', fetchImpl: t.fetchImpl }), (e) => e.code === 'not_connected');
+  assert.equal(t.calls(), 0);
 });

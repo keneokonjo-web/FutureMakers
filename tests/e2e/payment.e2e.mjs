@@ -290,7 +290,7 @@ await t('timeout is handled (hung backend)', async () => {
   reset();
   const page = await newPage();
   await page.route('**/js/config.js', async (route) => {
-    const src = fs.readFileSync(new URL('../../js/config.js', import.meta.url), 'utf8').replace(/(export const BACKEND = \{\s*url: )'[^']*'/, `$1'${mock.url}'`).replace('timeoutMs: 15000', 'timeoutMs: 800');
+    const src = fs.readFileSync(new URL('../../js/config.js', import.meta.url), 'utf8').replace(/(export const BACKEND = \{\s*url: )'[^']*'/, `$1'${mock.url}'`).replace('timeoutMs: 30000', 'timeoutMs: 800');
     await route.fulfill({ status: 200, contentType: 'text/javascript', body: src });
   });
   await page.reload();

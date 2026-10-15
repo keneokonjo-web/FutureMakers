@@ -10,9 +10,14 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 export const CODE_PATH = path.resolve(here, '../../backend/apps-script/Code.gs');
 
 class FakeSheet {
-  constructor(name) { this.name = name; this.grid = []; this.formats = []; }
+  constructor(name) { this.name = name; this.grid = []; this.formats = []; this.calls = 0; }
   getName() { return this.name; }
   getLastRow() { return this.grid.length; }
+  getDataRange() {
+    const w = this.getLastColumn();
+    const rows = this.grid.length || 1;
+    return { getValues: () => Array.from({ length: rows }, (_, i) => Array.from({ length: w || 1 }, (_, j) => (this.grid[i] || [])[j] ?? '')) };
+  }
   getLastColumn() { return this.grid.reduce((m, r) => Math.max(m, r.length), 0); }
   getRange(row, col, nr = 1, nc = 1) {
     const sheet = this;
